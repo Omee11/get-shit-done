@@ -51,13 +51,15 @@ jobs:
             echo "::error::Version must be a patch release (e.g., 1.27.1, not 1.28.0)"
             exit 1
           fi
-          # Extract base version (X.Y.0)
-          BASE=$(echo "$VERSION" | sed 's/\.[0-9]*$/.0/')
-          BASE_TAG="v${BASE}"
+          MAJOR_MINOR=$(echo "$VERSION" | cut -d. -f1-2)
+          TARGET_TAG="v${VERSION}"
           BRANCH="hotfix/${VERSION}"
-          # Verify base tag exists
-          if ! git tag -l "$BASE_TAG" | grep -q .; then
-            echo "::error::Base tag $BASE_TAG not found. Cannot create hotfix without a released base version."
+          BASE_TAG=$(git tag -l "v${MAJOR_MINOR}.*" \
+            | grep -E "^v[0-9]+\.[0-9]+\.[0-9]+$" \
+            | sort -V \
+            | awk -v target="$TARGET_TAG" '$1 < target { last=$1 } END { if (last != "") print last }')
+          if [ -z "$BASE_TAG" ]; then
+            echo "::error::No prior stable tag found for ${MAJOR_MINOR}.x before $TARGET_TAG"
             exit 1
           fi
           echo "base_tag=$BASE_TAG" >> "$GITHUB_OUTPUT"
@@ -87,6 +89,11 @@ jobs:
             echo "::error::Branch $BRANCH already exists. Delete it first or use finalize."
             exit 1
           fi
+
+      - name: Configure git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
       - name: Create hotfix branch
         env:
@@ -127,6 +134,11 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
           cache: 'npm'
 
+      - name: Configure git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
       - name: Install and test
         run: |
           npm ci
@@ -137,8 +149,18 @@ jobs:
         env:
           VERSION: ${{ inputs.version }}
         run: |
-          git tag "v${VERSION}"
-          git push origin "v${VERSION}"
+          if git rev-parse -q --verify "refs/tags/v${VERSION}" >/dev/null; then
+            EXISTING_SHA=$(git rev-parse "refs/tags/v${VERSION}")
+            HEAD_SHA=$(git rev-parse HEAD)
+            if [ "$EXISTING_SHA" != "$HEAD_SHA" ]; then
+              echo "::error::Tag v${VERSION} already exists pointing to different commit"
+              exit 1
+            fi
+            echo "Tag v${VERSION} already exists on current commit; skipping"
+          else
+            git tag "v${VERSION}"
+            git push origin "v${VERSION}"
+          fi
 
       - name: Publish to npm (latest)
         if: ${{ !inputs.dry_run }}
@@ -166,11 +188,19 @@ jobs:
           BRANCH: ${{ needs.validate-version.outputs.branch }}
           VERSION: ${{ inputs.version }}
         run: |
-          gh pr create \
-            --base main \
-            --head "$BRANCH" \
-            --title "chore: merge hotfix v${VERSION} back to main" \
-            --body "Merge hotfix changes back to main after v${VERSION} release."
+          EXISTING_PR=$(gh pr list --base main --head "$BRANCH" --state open --json number --jq '.[0].number')
+          if [ -n "$EXISTING_PR" ]; then
+            echo "PR #$EXISTING_PR already exists; updating"
+            gh pr edit "$EXISTING_PR" \
+              --title "chore: merge hotfix v${VERSION} back to main" \
+              --body "Merge hotfix changes back to main after v${VERSION} release."
+          else
+            gh pr create \
+              --base main \
+              --head "$BRANCH" \
+              --title "chore: merge hotfix v${VERSION} back to main" \
+              --body "Merge hotfix changes back to main after v${VERSION} release."
+          fi
 
       - name: Summary
         env:

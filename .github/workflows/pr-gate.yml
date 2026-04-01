@@ -6,6 +6,7 @@ on:
 
 permissions:
   pull-requests: write
+  issues: write
 
 jobs:
   size-check:
@@ -20,7 +21,7 @@ jobs:
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
         with:
           script: |
-            const { data: files } = await github.rest.pulls.listFiles({
+            const files = await github.paginate(github.rest.pulls.listFiles, {
               owner: context.repo.owner,
               repo: context.repo.repo,
               pull_number: context.issue.number,
@@ -36,6 +37,18 @@ jobs:
             else if (total <= 200) label = 'size/M';
             else if (total <= 500) label = 'size/L';
             else label = 'size/XL';
+
+            // Remove existing size labels
+            const existingLabels = context.payload.pull_request.labels || [];
+            const sizeLabels = existingLabels.filter(l => l.name.startsWith('size/'));
+            for (const staleLabel of sizeLabels) {
+              await github.rest.issues.removeLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                name: staleLabel.name
+              }).catch(() => {}); // ignore if already removed
+            }
 
             // Add size label
             try {

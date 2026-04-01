@@ -70,7 +70,7 @@ main                              ← stable, always deployable
 For critical bugs that can't wait for the next minor release.
 
 1. Trigger `hotfix.yml` with version (e.g., `1.27.1`)
-2. Workflow creates `hotfix/1.27.1` branch from latest `v1.27.x` tag
+2. Workflow creates `hotfix/1.27.1` branch from the latest patch tag for that minor version (e.g., `v1.27.0` or `v1.27.1`)
 3. Cherry-pick or apply fix on the hotfix branch
 4. Push — CI runs tests automatically
 5. Trigger `hotfix.yml` finalize action
