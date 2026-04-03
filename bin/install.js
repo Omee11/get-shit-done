@@ -1311,8 +1311,8 @@ const claudeToForgeTools = {
   Write: 'write',
   Edit: 'patch',
   Bash: 'shell',
-  Grep: 'search',
-  Glob: 'search',
+  Grep: 'fs_search',
+  Glob: 'fs_search',
   Task: 'sage',
   WebSearch: 'fetch',
   WebFetch: 'fetch',
@@ -1383,8 +1383,8 @@ function convertClaudeToForgeMarkdown(content) {
   converted = converted.replace(/\bEdit\(/g, 'patch(');
   converted = converted.replace(/\bRead\(/g, 'read(');
   converted = converted.replace(/\bWrite\(/g, 'write(');
-  converted = converted.replace(/\bGrep\(/g, 'search(');
-  converted = converted.replace(/\bGlob\(/g, 'search(');
+  converted = converted.replace(/\bGrep\(/g, 'fs_search(');
+  converted = converted.replace(/\bGlob\(/g, 'fs_search(');
   converted = converted.replace(/\bTodoWrite\(/g, 'todo_write(');
   converted = converted.replace(/\bWebFetch\(/g, 'fetch(');
   converted = converted.replace(/\bAskUserQuestion\b/g, 'conversational prompting');
@@ -1393,8 +1393,8 @@ function convertClaudeToForgeMarkdown(content) {
   converted = converted.replace(/`Edit`/g, '`patch`');
   converted = converted.replace(/`Read`/g, '`read`');
   converted = converted.replace(/`Write`/g, '`write`');
-  converted = converted.replace(/`Grep`/g, '`search`');
-  converted = converted.replace(/`Glob`/g, '`search`');
+  converted = converted.replace(/`Grep`/g, '`fs_search`');
+  converted = converted.replace(/`Glob`/g, '`fs_search`');
   converted = converted.replace(/`TodoWrite`/g, '`todo_write`');
   converted = converted.replace(/`WebFetch`/g, '`fetch`');
   // Replace "the Read tool" / "the Bash tool" style references
@@ -1402,8 +1402,8 @@ function convertClaudeToForgeMarkdown(content) {
   converted = converted.replace(/\bthe Bash tool\b/g, 'the shell tool');
   converted = converted.replace(/\bthe Edit tool\b/g, 'the patch tool');
   converted = converted.replace(/\bthe Write tool\b/g, 'the write tool');
-  converted = converted.replace(/\bthe Grep tool\b/g, 'the search tool');
-  converted = converted.replace(/\bthe Glob tool\b/g, 'the search tool');
+  converted = converted.replace(/\bthe Grep tool\b/g, 'the fs_search tool');
+  converted = converted.replace(/\bthe Glob tool\b/g, 'the fs_search tool');
   // Replace subagent_type from Claude to Forge format
   converted = converted.replace(/subagent_type="general-purpose"/g, 'subagent_type="generalPurpose"');
   converted = converted.replace(/\$ARGUMENTS\b/g, '{{GSD_ARGS}}');
@@ -1440,7 +1440,7 @@ Use these Forge tools when executing GSD workflows:
 - \`patch\` for editing existing files
 - \`read\` for reading files
 - \`write\` for creating new files
-- \`search\` for searching code (ripgrep-based)
+- \`fs_search\` for searching code (ripgrep-based)
 - \`fetch\` for web queries and URL fetching
 - \`todo_write\` for task management
 - \`remove\` for deleting files
@@ -1476,6 +1476,45 @@ function convertClaudeCommandToForgeSkill(content, skillName) {
 }
 
 /**
+ * Extract tools from YAML frontmatter, handling both formats:
+ *   Inline:    tools: Read, Write, Bash
+ *   YAML list: tools:\n  - Read\n  - Write\n  - Bash
+ * Returns an array of tool name strings.
+ */
+function extractToolsFromFrontmatter(frontmatter) {
+  // Try inline format first: tools: Read, Write, Bash
+  // Use [^\S\n]* instead of \s* to avoid matching across newlines
+  const inlineMatch = frontmatter.match(/^tools:[^\S\n]*(\S.+)$/m);
+  if (inlineMatch) {
+    return inlineMatch[1].split(',').map(t => t.trim()).filter(Boolean);
+  }
+  // Try YAML list format: tools:\n  - Read\n  - Write
+  const listMatch = frontmatter.match(/^tools:\s*$/m);
+  if (listMatch) {
+    const tools = [];
+    const lines = frontmatter.split('\n');
+    let inToolsList = false;
+    for (const line of lines) {
+      if (/^tools:\s*$/.test(line)) {
+        inToolsList = true;
+        continue;
+      }
+      if (inToolsList) {
+        const itemMatch = line.match(/^\s+-\s+(.+)$/);
+        if (itemMatch) {
+          tools.push(itemMatch[1].trim());
+        } else {
+          // End of list (next field or end of frontmatter)
+          break;
+        }
+      }
+    }
+    return tools;
+  }
+  return [];
+}
+
+/**
  * Convert a Claude agent (.md) to a Forge agent.
  * Uses Forge tool names and frontmatter format (id, title, description, tools).
  * Forge agents use 'id' instead of 'name' as the primary identifier.
@@ -1489,10 +1528,9 @@ function convertClaudeAgentToForgeAgent(content, isGlobal = false) {
 
   const name = extractFrontmatterField(frontmatter, 'name') || 'unknown';
   const description = extractFrontmatterField(frontmatter, 'description') || '';
-  const toolsRaw = extractFrontmatterField(frontmatter, 'tools') || '';
 
-  // Map tools to Forge equivalents, deduplicate
-  const claudeTools = toolsRaw.split(',').map(t => t.trim()).filter(Boolean);
+  // Extract tools using proper YAML-aware parser (handles both inline and list formats)
+  const claudeTools = extractToolsFromFrontmatter(frontmatter);
   const mappedTools = claudeTools.map(t => convertForgeToolName(t)).filter(Boolean);
   const uniqueTools = [...new Set(mappedTools)];
 
@@ -5879,6 +5917,7 @@ if (process.env.GSD_TEST_MODE) {
     copyCommandsAsForgeSkills,
     claudeToForgeTools,
     convertForgeToolName,
+    extractToolsFromFrontmatter,
     writeManifest,
     reportLocalPatches,
     validateHookFields,
