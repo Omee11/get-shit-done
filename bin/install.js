@@ -68,6 +68,7 @@ const hasAntigravity = args.includes('--antigravity');
 const hasCursor = args.includes('--cursor');
 const hasWindsurf = args.includes('--windsurf');
 const hasAugment = args.includes('--augment');
+const hasForge = args.includes('--forge');
 const hasSdk = args.includes('--sdk');
 const hasBoth = args.includes('--both'); // Legacy flag, keeps working
 const hasAll = args.includes('--all');
@@ -76,7 +77,7 @@ const hasUninstall = args.includes('--uninstall') || args.includes('-u');
 // Runtime selection - can be set by flags or interactive prompt
 let selectedRuntimes = [];
 if (hasAll) {
-  selectedRuntimes = ['claude', 'opencode', 'gemini', 'codex', 'copilot', 'antigravity', 'cursor', 'windsurf', 'augment'];
+  selectedRuntimes = ['claude', 'opencode', 'gemini', 'codex', 'copilot', 'antigravity', 'cursor', 'windsurf', 'augment', 'forge'];
 } else if (hasBoth) {
   selectedRuntimes = ['claude', 'opencode'];
 } else {
@@ -89,6 +90,7 @@ if (hasAll) {
   if (hasCursor) selectedRuntimes.push('cursor');
   if (hasWindsurf) selectedRuntimes.push('windsurf');
   if (hasAugment) selectedRuntimes.push('augment');
+  if (hasForge) selectedRuntimes.push('forge');
 }
 
 // WSL + Windows Node.js detection
@@ -135,6 +137,7 @@ function getDirName(runtime) {
   if (runtime === 'cursor') return '.cursor';
   if (runtime === 'windsurf') return '.windsurf';
   if (runtime === 'augment') return '.augment';
+  if (runtime === 'forge') return '.forge';
   return '.claude';
 }
 
@@ -165,6 +168,7 @@ function getConfigDirFromHome(runtime, isGlobal) {
   if (runtime === 'cursor') return "'.cursor'";
   if (runtime === 'windsurf') return "'.windsurf'";
   if (runtime === 'augment') return "'.augment'";
+  if (runtime === 'forge') return "'forge'";
   return "'.claude'";
 }
 
@@ -284,6 +288,17 @@ function getGlobalDir(runtime, explicitDir = null) {
     return path.join(os.homedir(), '.augment');
   }
 
+  if (runtime === 'forge') {
+    // Forge: --config-dir > FORGE_CONFIG_DIR > ~/forge
+    if (explicitDir) {
+      return expandTilde(explicitDir);
+    }
+    if (process.env.FORGE_CONFIG_DIR) {
+      return expandTilde(process.env.FORGE_CONFIG_DIR);
+    }
+    return path.join(os.homedir(), 'forge');
+  }
+
   // Claude Code: --config-dir > CLAUDE_CONFIG_DIR > ~/.claude
   if (explicitDir) {
     return expandTilde(explicitDir);
@@ -304,7 +319,7 @@ const banner = '\n' +
   '\n' +
   '  Get Shit Done ' + dim + 'v' + pkg.version + reset + '\n' +
   '  A meta-prompting, context engineering and spec-driven\n' +
-  '  development system for Claude Code, OpenCode, Gemini, Codex, Copilot, Antigravity, Cursor, Windsurf, and Augment by TÂCHES.\n';
+  '  development system for Claude Code, OpenCode, Gemini, Codex, Copilot, Antigravity, Cursor, Windsurf, Augment, and Forge by TÂCHES.\n';
 
 // Parse --config-dir argument
 function parseConfigDirArg() {
@@ -342,8 +357,7 @@ if (hasUninstall) {
 
 // Show help if requested
 if (hasHelp) {
-  console.log(`  ${yellow}Usage:${reset} npx get-shit-done-cc [options]\n\n  ${yellow}Options:${reset}\n    ${cyan}-g, --global${reset}              Install globally (to config directory)\n    ${cyan}-l, --local${reset}               Install locally (to current directory)\n    ${cyan}--claude${reset}                  Install for Claude Code only\n    ${cyan}--opencode${reset}                Install for OpenCode only\n    ${cyan}--gemini${reset}                  Install for Gemini only\n    ${cyan}--codex${reset}                   Install for Codex only\n    ${cyan}--copilot${reset}                 Install for Copilot only\n    ${cyan}--antigravity${reset}             Install for Antigravity only\n    ${cyan}--cursor${reset}                  Install for Cursor only\n    ${cyan}--windsurf${reset}                Install for Windsurf only
-    ${cyan}--augment${reset}                 Install for Augment only\n    ${cyan}--all${reset}                     Install for all runtimes\n    ${cyan}--sdk${reset}                     Also install GSD SDK CLI (gsd-sdk)\n    ${cyan}-u, --uninstall${reset}           Uninstall GSD (remove all GSD files)\n    ${cyan}-c, --config-dir <path>${reset}   Specify custom config directory\n    ${cyan}-h, --help${reset}                Show this help message\n    ${cyan}--force-statusline${reset}        Replace existing statusline config\n\n  ${yellow}Examples:${reset}\n    ${dim}# Interactive install (prompts for runtime and location)${reset}\n    npx get-shit-done-cc\n\n    ${dim}# Install for Claude Code globally${reset}\n    npx get-shit-done-cc --claude --global\n\n    ${dim}# Install for Gemini globally${reset}\n    npx get-shit-done-cc --gemini --global\n\n    ${dim}# Install for Codex globally${reset}\n    npx get-shit-done-cc --codex --global\n\n    ${dim}# Install for Copilot globally${reset}\n    npx get-shit-done-cc --copilot --global\n\n    ${dim}# Install for Copilot locally${reset}\n    npx get-shit-done-cc --copilot --local\n\n    ${dim}# Install for Antigravity globally${reset}\n    npx get-shit-done-cc --antigravity --global\n\n    ${dim}# Install for Antigravity locally${reset}\n    npx get-shit-done-cc --antigravity --local\n\n    ${dim}# Install for Cursor globally${reset}\n    npx get-shit-done-cc --cursor --global\n\n    ${dim}# Install for Cursor locally${reset}\n    npx get-shit-done-cc --cursor --local\n\n    ${dim}# Install for Windsurf globally${reset}\n    npx get-shit-done-cc --windsurf --global\n\n    ${dim}# Install for Windsurf locally${reset}\n    npx get-shit-done-cc --windsurf --local\n\n    ${dim}# Install for all runtimes globally${reset}\n    npx get-shit-done-cc --all --global\n\n    ${dim}# Install to custom config directory${reset}\n    npx get-shit-done-cc --codex --global --config-dir ~/.codex-work\n\n    ${dim}# Install to current project only${reset}\n    npx get-shit-done-cc --claude --local\n\n    ${dim}# Uninstall GSD from Cursor globally${reset}\n    npx get-shit-done-cc --cursor --global --uninstall\n\n  ${yellow}Notes:${reset}\n    The --config-dir option is useful when you have multiple configurations.\n    It takes priority over CLAUDE_CONFIG_DIR / GEMINI_CONFIG_DIR / CODEX_HOME / COPILOT_CONFIG_DIR / ANTIGRAVITY_CONFIG_DIR / CURSOR_CONFIG_DIR / WINDSURF_CONFIG_DIR / AUGMENT_CONFIG_DIR environment variables.\n`);
+  console.log(`  ${yellow}Usage:${reset} npx get-shit-done-cc [options]\n\n  ${yellow}Options:${reset}\n    ${cyan}-g, --global${reset}              Install globally (to config directory)\n    ${cyan}-l, --local${reset}               Install locally (to current directory)\n    ${cyan}--claude${reset}                  Install for Claude Code only\n    ${cyan}--opencode${reset}                Install for OpenCode only\n    ${cyan}--gemini${reset}                  Install for Gemini only\n    ${cyan}--codex${reset}                   Install for Codex only\n    ${cyan}--copilot${reset}                 Install for Copilot only\n    ${cyan}--antigravity${reset}             Install for Antigravity only\n    ${cyan}--cursor${reset}                  Install for Cursor only\n    ${cyan}--windsurf${reset}                Install for Windsurf only\n    ${cyan}--augment${reset}                 Install for Augment only\n    ${cyan}--forge${reset}                   Install for Forge only\n    ${cyan}--all${reset}                     Install for all runtimes\n    ${cyan}--sdk${reset}                     Also install GSD SDK CLI (gsd-sdk)\n    ${cyan}-u, --uninstall${reset}           Uninstall GSD (remove all GSD files)\n    ${cyan}-c, --config-dir <path>${reset}   Specify custom config directory\n    ${cyan}-h, --help${reset}                Show this help message\n    ${cyan}--force-statusline${reset}        Replace existing statusline config\n\n  ${yellow}Examples:${reset}\n    ${dim}# Interactive install (prompts for runtime and location)${reset}\n    npx get-shit-done-cc\n\n    ${dim}# Install for Claude Code globally${reset}\n    npx get-shit-done-cc --claude --global\n\n    ${dim}# Install for Gemini globally${reset}\n    npx get-shit-done-cc --gemini --global\n\n    ${dim}# Install for Codex globally${reset}\n    npx get-shit-done-cc --codex --global\n\n    ${dim}# Install for Copilot globally${reset}\n    npx get-shit-done-cc --copilot --global\n\n    ${dim}# Install for Copilot locally${reset}\n    npx get-shit-done-cc --copilot --local\n\n    ${dim}# Install for Antigravity globally${reset}\n    npx get-shit-done-cc --antigravity --global\n\n    ${dim}# Install for Antigravity locally${reset}\n    npx get-shit-done-cc --antigravity --local\n\n    ${dim}# Install for Cursor globally${reset}\n    npx get-shit-done-cc --cursor --global\n\n    ${dim}# Install for Cursor locally${reset}\n    npx get-shit-done-cc --cursor --local\n\n    ${dim}# Install for Windsurf globally${reset}\n    npx get-shit-done-cc --windsurf --global\n\n    ${dim}# Install for Windsurf locally${reset}\n    npx get-shit-done-cc --windsurf --local\n\n    ${dim}# Install for Forge globally${reset}\n    npx get-shit-done-cc --forge --global\n\n    ${dim}# Install for Forge locally${reset}\n    npx get-shit-done-cc --forge --local\n\n    ${dim}# Install for all runtimes globally${reset}\n    npx get-shit-done-cc --all --global\n\n    ${dim}# Install to custom config directory${reset}\n    npx get-shit-done-cc --codex --global --config-dir ~/.codex-work\n\n    ${dim}# Install to current project only${reset}\n    npx get-shit-done-cc --claude --local\n\n    ${dim}# Uninstall GSD from Cursor globally${reset}\n    npx get-shit-done-cc --cursor --global --uninstall\n\n  ${yellow}Notes:${reset}\n    The --config-dir option is useful when you have multiple configurations.\n    It takes priority over CLAUDE_CONFIG_DIR / GEMINI_CONFIG_DIR / CODEX_HOME / COPILOT_CONFIG_DIR / ANTIGRAVITY_CONFIG_DIR / CURSOR_CONFIG_DIR / WINDSURF_CONFIG_DIR / AUGMENT_CONFIG_DIR / FORGE_CONFIG_DIR environment variables.\n`);
   process.exit(0);
 }
 
@@ -1283,6 +1297,266 @@ function copyCommandsAsAugmentSkills(srcDir, skillsDir, prefix, pathPrefix, runt
       content = content.replace(augmentDirRegex, pathPrefix);
       content = processAttribution(content, getCommitAttribution(runtime));
       content = convertClaudeCommandToAugmentSkill(content, skillName);
+
+      fs.writeFileSync(path.join(skillDir, 'SKILL.md'), content);
+    }
+  }
+
+  recurse(srcDir, prefix);
+}
+
+// Forge tool name mapping — Claude Code tools to Forge Code tools
+const claudeToForgeTools = {
+  Read: 'read',
+  Write: 'write',
+  Edit: 'patch',
+  Bash: 'shell',
+  Grep: 'search',
+  Glob: 'search',
+  Task: 'sage',
+  WebSearch: 'fetch',
+  WebFetch: 'fetch',
+  TodoWrite: 'todo_write',
+  AskUserQuestion: null, // No direct equivalent — use conversational prompting
+  SlashCommand: null,    // No equivalent — skills are auto-discovered
+};
+
+/**
+ * Convert a Claude Code tool name to Forge Code format
+ * @returns {string|null} Forge tool name, or null if tool should be excluded
+ */
+function convertForgeToolName(claudeTool) {
+  if (claudeTool in claudeToForgeTools) {
+    return claudeToForgeTools[claudeTool];
+  }
+  // MCP tools: keep format (Forge supports MCP via mcp_* patterns)
+  if (claudeTool.startsWith('mcp__')) {
+    return claudeTool;
+  }
+  // Default: lowercase
+  return claudeTool.toLowerCase();
+}
+
+function convertSlashCommandsToForgeSkillMentions(content) {
+  // Forge uses skill names directly (no prefix). Convert /gsd:xxx to gsd-xxx.
+  let converted = content.replace(/\/gsd:([a-z0-9-]+)/gi, (_, commandName) => {
+    return `gsd-${String(commandName).toLowerCase()}`;
+  });
+  converted = converted.replace(/\/gsd-help\b/g, 'gsd-help');
+  return converted;
+}
+
+/**
+ * Apply Forge-specific content conversion — path replacement + command name + tool names.
+ * Path mappings depend on install mode:
+ *   Global: ~/.claude/ → ~/forge/, ./.claude/ → ./.forge/
+ *   Local:  ~/.claude/ → .forge/, ./.claude/ → ./.forge/
+ * Applied to ALL Forge content (skills, agents, engine files).
+ * @param {string} content - Source content to convert
+ * @param {boolean} [isGlobal=false] - Whether this is a global install
+ */
+function convertClaudeToForgeContent(content, isGlobal = false) {
+  let c = content;
+  if (isGlobal) {
+    c = c.replace(/\$HOME\/\.claude\//g, '$HOME/forge/');
+    c = c.replace(/~\/\.claude\//g, '~/forge/');
+    // Also catch ~/.claude at end of line or before non-/ characters
+    c = c.replace(/~\/\.claude(?=\s|$|[^/])/gm, '~/forge');
+  } else {
+    c = c.replace(/\$HOME\/\.claude\//g, '.forge/');
+    c = c.replace(/~\/\.claude\//g, '.forge/');
+    c = c.replace(/~\/\.claude(?=\s|$|[^/])/gm, '.forge');
+  }
+  c = c.replace(/\.\/\.claude\//g, './.forge/');
+  c = c.replace(/\.claude\//g, '.forge/');
+  // Command name conversion (all gsd: references → gsd-)
+  c = c.replace(/gsd:/g, 'gsd-');
+  // Runtime-neutral agent name replacement
+  c = neutralizeAgentReferences(c, 'AGENTS.md');
+  return c;
+}
+
+function convertClaudeToForgeMarkdown(content) {
+  let converted = convertSlashCommandsToForgeSkillMentions(content);
+  // Replace tool name references in body text — both function call form and backtick-quoted
+  converted = converted.replace(/\bBash\(/g, 'shell(');
+  converted = converted.replace(/\bEdit\(/g, 'patch(');
+  converted = converted.replace(/\bRead\(/g, 'read(');
+  converted = converted.replace(/\bWrite\(/g, 'write(');
+  converted = converted.replace(/\bGrep\(/g, 'search(');
+  converted = converted.replace(/\bGlob\(/g, 'search(');
+  converted = converted.replace(/\bTodoWrite\(/g, 'todo_write(');
+  converted = converted.replace(/\bWebFetch\(/g, 'fetch(');
+  converted = converted.replace(/\bAskUserQuestion\b/g, 'conversational prompting');
+  // Also replace backtick-quoted tool names: `Read` → `read`, `Bash` → `shell`, etc.
+  converted = converted.replace(/`Bash`/g, '`shell`');
+  converted = converted.replace(/`Edit`/g, '`patch`');
+  converted = converted.replace(/`Read`/g, '`read`');
+  converted = converted.replace(/`Write`/g, '`write`');
+  converted = converted.replace(/`Grep`/g, '`search`');
+  converted = converted.replace(/`Glob`/g, '`search`');
+  converted = converted.replace(/`TodoWrite`/g, '`todo_write`');
+  converted = converted.replace(/`WebFetch`/g, '`fetch`');
+  // Replace "the Read tool" / "the Bash tool" style references
+  converted = converted.replace(/\bthe Read tool\b/g, 'the read tool');
+  converted = converted.replace(/\bthe Bash tool\b/g, 'the shell tool');
+  converted = converted.replace(/\bthe Edit tool\b/g, 'the patch tool');
+  converted = converted.replace(/\bthe Write tool\b/g, 'the write tool');
+  converted = converted.replace(/\bthe Grep tool\b/g, 'the search tool');
+  converted = converted.replace(/\bthe Glob tool\b/g, 'the search tool');
+  // Replace subagent_type from Claude to Forge format
+  converted = converted.replace(/subagent_type="general-purpose"/g, 'subagent_type="generalPurpose"');
+  converted = converted.replace(/\$ARGUMENTS\b/g, '{{GSD_ARGS}}');
+  // Replace project-level Claude conventions with Forge equivalents
+  converted = converted.replace(/`\.\/CLAUDE\.md`/g, '`AGENTS.md`');
+  converted = converted.replace(/\.\/CLAUDE\.md/g, 'AGENTS.md');
+  converted = converted.replace(/`CLAUDE\.md`/g, '`AGENTS.md`');
+  converted = converted.replace(/\bCLAUDE\.md\b/g, 'AGENTS.md');
+  converted = converted.replace(/\.claude\/skills\//g, '.forge/skills/');
+  // Remove Claude Code-specific bug workarounds before brand replacement
+  converted = converted.replace(/\*\*Known Claude Code bug \(classifyHandoffIfNeeded\):\*\*[^\n]*\n/g, '');
+  converted = converted.replace(/- \*\*classifyHandoffIfNeeded false failure:\*\*[^\n]*\n/g, '');
+  // Replace "Claude Code" brand references with "Forge"
+  converted = converted.replace(/\bClaude Code\b/g, 'Forge');
+  return converted;
+}
+
+function getForgeSkillAdapterHeader(skillName) {
+  return `<forge_skill_adapter>
+## A. Skill Invocation
+- This skill is invoked when the user mentions \`${skillName}\` or describes a task matching this skill.
+- Treat all user text after the skill mention as \`{{GSD_ARGS}}\`.
+- If no arguments are present, treat \`{{GSD_ARGS}}\` as empty.
+
+## B. User Prompting
+When the workflow needs user input, prompt the user conversationally:
+- Present options as a numbered list in your response text
+- Ask the user to reply with their choice
+- For multi-select, ask for comma-separated numbers
+
+## C. Tool Usage
+Use these Forge tools when executing GSD workflows:
+- \`shell\` for running commands (terminal operations)
+- \`patch\` for editing existing files
+- \`read\` for reading files
+- \`write\` for creating new files
+- \`search\` for searching code (ripgrep-based)
+- \`fetch\` for web queries and URL fetching
+- \`todo_write\` for task management
+- \`remove\` for deleting files
+- \`undo\` for reverting changes
+
+## D. Subagent Spawning
+When the workflow needs to spawn a subagent:
+- Use \`sage\` for research-only tasks (read-only, no modifications)
+- Define custom agents in \`.forge/agents/\` or \`~/forge/agents/\` with \`tool_supported: true\`
+</forge_skill_adapter>`;
+}
+
+/**
+ * Convert a Claude command (.md) to a Forge skill (SKILL.md).
+ * Transforms frontmatter to minimal name + description, adds skill adapter header.
+ * Body passes through with path/command/tool conversions applied.
+ */
+function convertClaudeCommandToForgeSkill(content, skillName) {
+  const converted = convertClaudeToForgeMarkdown(content);
+  const { frontmatter, body } = extractFrontmatterAndBody(converted);
+  let description = `Run GSD workflow ${skillName}.`;
+  if (frontmatter) {
+    const maybeDescription = extractFrontmatterField(frontmatter, 'description');
+    if (maybeDescription) {
+      description = maybeDescription;
+    }
+  }
+  description = toSingleLine(description);
+  const shortDescription = description.length > 180 ? `${description.slice(0, 177)}...` : description;
+  const adapter = getForgeSkillAdapterHeader(skillName);
+
+  return `---\nname: ${yamlIdentifier(skillName)}\ndescription: ${yamlQuote(shortDescription)}\n---\n\n${adapter}\n\n${body.trimStart()}`;
+}
+
+/**
+ * Convert a Claude agent (.md) to a Forge agent.
+ * Uses Forge tool names and frontmatter format (id, title, description, tools).
+ * Forge agents use 'id' instead of 'name' as the primary identifier.
+ */
+function convertClaudeAgentToForgeAgent(content, isGlobal = false) {
+  let converted = convertClaudeToForgeContent(content, isGlobal);
+  converted = convertClaudeToForgeMarkdown(converted);
+
+  const { frontmatter, body } = extractFrontmatterAndBody(converted);
+  if (!frontmatter) return converted;
+
+  const name = extractFrontmatterField(frontmatter, 'name') || 'unknown';
+  const description = extractFrontmatterField(frontmatter, 'description') || '';
+  const toolsRaw = extractFrontmatterField(frontmatter, 'tools') || '';
+
+  // Map tools to Forge equivalents, deduplicate
+  const claudeTools = toolsRaw.split(',').map(t => t.trim()).filter(Boolean);
+  const mappedTools = claudeTools.map(t => convertForgeToolName(t)).filter(Boolean);
+  const uniqueTools = [...new Set(mappedTools)];
+
+  // Forge agents use YAML list format for tools, and 'id' instead of 'name'
+  let fm = `---\nid: ${yamlIdentifier(name)}\ntitle: ${name}\ndescription: ${yamlQuote(toSingleLine(description))}\n`;
+  if (uniqueTools.length > 0) {
+    fm += 'tools:\n';
+    for (const tool of uniqueTools) {
+      fm += `  - ${tool}\n`;
+    }
+  }
+  fm += 'tool_supported: true\n';
+  fm += '---';
+
+  return `${fm}\n${body}`;
+}
+
+/**
+ * Copy Claude commands as Forge skills — one folder per skill with SKILL.md.
+ * Mirrors copyCommandsAsAugmentSkills but uses Forge converters.
+ */
+function copyCommandsAsForgeSkills(srcDir, skillsDir, prefix, pathPrefix, runtime) {
+  if (!fs.existsSync(srcDir)) {
+    return;
+  }
+
+  fs.mkdirSync(skillsDir, { recursive: true });
+
+  // Remove previous GSD Forge skills to avoid stale command skills
+  const existing = fs.readdirSync(skillsDir, { withFileTypes: true });
+  for (const entry of existing) {
+    if (entry.isDirectory() && entry.name.startsWith(`${prefix}-`)) {
+      fs.rmSync(path.join(skillsDir, entry.name), { recursive: true });
+    }
+  }
+
+  function recurse(currentSrcDir, currentPrefix) {
+    const entries = fs.readdirSync(currentSrcDir, { withFileTypes: true });
+
+    for (const entry of entries) {
+      const srcPath = path.join(currentSrcDir, entry.name);
+      if (entry.isDirectory()) {
+        recurse(srcPath, `${currentPrefix}-${entry.name}`);
+        continue;
+      }
+
+      if (!entry.name.endsWith('.md')) {
+        continue;
+      }
+
+      const baseName = entry.name.replace('.md', '');
+      const skillName = `${currentPrefix}-${baseName}`;
+      const skillDir = path.join(skillsDir, skillName);
+      fs.mkdirSync(skillDir, { recursive: true });
+
+      let content = fs.readFileSync(srcPath, 'utf8');
+      const globalClaudeRegex = /~\/\.claude\//g;
+      const globalClaudeHomeRegex = /\$HOME\/\.claude\//g;
+      const localClaudeRegex = /\.\/\.claude\//g;
+      content = content.replace(globalClaudeRegex, pathPrefix);
+      content = content.replace(globalClaudeHomeRegex, pathPrefix);
+      content = content.replace(localClaudeRegex, `./${getDirName(runtime)}/`);
+      content = processAttribution(content, getCommitAttribution(runtime));
+      content = convertClaudeCommandToForgeSkill(content, skillName);
 
       fs.writeFileSync(path.join(skillDir, 'SKILL.md'), content);
     }
@@ -3398,6 +3672,7 @@ function copyWithPathReplacement(srcDir, destDir, pathPrefix, runtime, isCommand
   const isCursor = runtime === 'cursor';
   const isWindsurf = runtime === 'windsurf';
   const isAugment = runtime === 'augment';
+  const isForge = runtime === 'forge';
   const dirName = getDirName(runtime);
 
   // Clean install: remove existing destination to prevent orphaned files
@@ -3416,9 +3691,9 @@ function copyWithPathReplacement(srcDir, destDir, pathPrefix, runtime, isCommand
       copyWithPathReplacement(srcPath, destPath, pathPrefix, runtime, isCommand, isGlobal);
     } else if (entry.name.endsWith('.md')) {
       // Replace ~/.claude/ and $HOME/.claude/ and ./.claude/ with runtime-appropriate paths
-      // Skip generic replacement for Copilot — convertClaudeToCopilotContent handles all paths
+      // Skip generic replacement for Copilot/Antigravity/Forge — dedicated converters handle all paths
       let content = fs.readFileSync(srcPath, 'utf8');
-      if (!isCopilot && !isAntigravity) {
+      if (!isCopilot && !isAntigravity && !isForge) {
         const globalClaudeRegex = /~\/\.claude\//g;
         const globalClaudeHomeRegex = /\$HOME\/\.claude\//g;
         const localClaudeRegex = /\.\/\.claude\//g;
@@ -3460,6 +3735,11 @@ function copyWithPathReplacement(srcDir, destDir, pathPrefix, runtime, isCommand
       } else if (isWindsurf) {
         content = convertClaudeToWindsurfMarkdown(content);
         fs.writeFileSync(destPath, content);
+      } else if (isForge) {
+        content = convertClaudeToForgeContent(content, isGlobal);
+        content = convertClaudeToForgeMarkdown(content);
+        content = processAttribution(content, getCommitAttribution(runtime));
+        fs.writeFileSync(destPath, content);
       } else {
         fs.writeFileSync(destPath, content);
       }
@@ -3488,6 +3768,14 @@ function copyWithPathReplacement(srcDir, destDir, pathPrefix, runtime, isCommand
       jsContent = jsContent.replace(/\.claude\/skills\//g, '.windsurf/skills/');
       jsContent = jsContent.replace(/CLAUDE\.md/g, '.windsurf/rules');
       jsContent = jsContent.replace(/\bClaude Code\b/g, 'Windsurf');
+      fs.writeFileSync(destPath, jsContent);
+    } else if (isForge && (entry.name.endsWith('.cjs') || entry.name.endsWith('.js'))) {
+      // For Forge, also convert Claude references in JS/CJS utility scripts
+      let jsContent = fs.readFileSync(srcPath, 'utf8');
+      jsContent = jsContent.replace(/gsd:/gi, 'gsd-');
+      jsContent = jsContent.replace(/\.claude\/skills\//g, '.forge/skills/');
+      jsContent = jsContent.replace(/CLAUDE\.md/g, 'AGENTS.md');
+      jsContent = jsContent.replace(/\bClaude Code\b/g, 'Forge');
       fs.writeFileSync(destPath, jsContent);
     } else {
       fs.copyFileSync(srcPath, destPath);
@@ -3664,6 +3952,7 @@ function uninstall(isGlobal, runtime = 'claude') {
   const isCursor = runtime === 'cursor';
   const isWindsurf = runtime === 'windsurf';
   const isAugment = runtime === 'augment';
+  const isForge = runtime === 'forge';
   const dirName = getDirName(runtime);
 
   // Get the target directory based on runtime and install type
@@ -3684,6 +3973,7 @@ function uninstall(isGlobal, runtime = 'claude') {
   if (runtime === 'cursor') runtimeLabel = 'Cursor';
   if (runtime === 'windsurf') runtimeLabel = 'Windsurf';
   if (runtime === 'augment') runtimeLabel = 'Augment';
+  if (runtime === 'forge') runtimeLabel = 'Forge';
 
   console.log(`  Uninstalling GSD from ${cyan}${runtimeLabel}${reset} at ${cyan}${locationLabel}${reset}\n`);
 
@@ -3845,6 +4135,23 @@ function uninstall(isGlobal, runtime = 'claude') {
       if (skillCount > 0) {
         removedCount++;
         console.log(`  ${green}✓${reset} Removed ${skillCount} Windsurf skills`);
+      }
+    }
+  } else if (isForge) {
+    // Forge: remove skills/gsd-*/ directories (same layout as Windsurf skills)
+    const skillsDir = path.join(targetDir, 'skills');
+    if (fs.existsSync(skillsDir)) {
+      let skillCount = 0;
+      const entries = fs.readdirSync(skillsDir, { withFileTypes: true });
+      for (const entry of entries) {
+        if (entry.isDirectory() && entry.name.startsWith('gsd-')) {
+          fs.rmSync(path.join(skillsDir, entry.name), { recursive: true });
+          skillCount++;
+        }
+      }
+      if (skillCount > 0) {
+        removedCount++;
+        console.log(`  ${green}✓${reset} Removed ${skillCount} Forge skills`);
       }
     }
   } else if (isGemini) {
@@ -4523,6 +4830,7 @@ function install(isGlobal, runtime = 'claude') {
   const isCursor = runtime === 'cursor';
   const isWindsurf = runtime === 'windsurf';
   const isAugment = runtime === 'augment';
+  const isForge = runtime === 'forge';
   const dirName = getDirName(runtime);
   const src = path.join(__dirname, '..');
 
@@ -4555,6 +4863,7 @@ function install(isGlobal, runtime = 'claude') {
   if (isCursor) runtimeLabel = 'Cursor';
   if (isWindsurf) runtimeLabel = 'Windsurf';
   if (isAugment) runtimeLabel = 'Augment';
+  if (isForge) runtimeLabel = 'Forge';
 
   console.log(`  Installing for ${cyan}${runtimeLabel}${reset} to ${cyan}${locationLabel}${reset}\n`);
 
@@ -4652,6 +4961,16 @@ function install(isGlobal, runtime = 'claude') {
     } else {
       failures.push('skills/gsd-*');
     }
+  } else if (isForge) {
+    const skillsDir = path.join(targetDir, 'skills');
+    const gsdSrc = path.join(src, 'commands', 'gsd');
+    copyCommandsAsForgeSkills(gsdSrc, skillsDir, 'gsd', pathPrefix, runtime);
+    const installedSkillNames = listCodexSkillNames(skillsDir); // reuse — same dir structure
+    if (installedSkillNames.length > 0) {
+      console.log(`  ${green}✓${reset} Installed ${installedSkillNames.length} skills to skills/`);
+    } else {
+      failures.push('skills/gsd-*');
+    }
   } else if (isGemini) {
     const commandsDir = path.join(targetDir, 'commands');
     fs.mkdirSync(commandsDir, { recursive: true });
@@ -4721,7 +5040,7 @@ function install(isGlobal, runtime = 'claude') {
         // Replace ~/.claude/ and $HOME/.claude/ as they are the source of truth in the repo
         const dirRegex = /~\/\.claude\//g;
         const homeDirRegex = /\$HOME\/\.claude\//g;
-        if (!isCopilot && !isAntigravity) {
+        if (!isCopilot && !isAntigravity && !isForge) {
           content = content.replace(dirRegex, pathPrefix);
           content = content.replace(homeDirRegex, pathPrefix);
         }
@@ -4743,6 +5062,8 @@ function install(isGlobal, runtime = 'claude') {
           content = convertClaudeAgentToWindsurfAgent(content);
         } else if (isAugment) {
           content = convertClaudeAgentToAugmentAgent(content);
+        } else if (isForge) {
+          content = convertClaudeAgentToForgeAgent(content, isGlobal);
         }
         const destName = isCopilot ? entry.name.replace('.md', '.agent.md') : entry.name;
         fs.writeFileSync(path.join(agentsDest, destName), content);
@@ -4776,7 +5097,7 @@ function install(isGlobal, runtime = 'claude') {
     failures.push('VERSION');
   }
 
-  if (!isCodex && !isCopilot && !isCursor && !isWindsurf) {
+  if (!isCodex && !isCopilot && !isCursor && !isWindsurf && !isForge) {
     // Write package.json to force CommonJS mode for GSD scripts
     // Prevents "require is not defined" errors when project has "type": "module"
     // Node.js walks up looking for package.json - this stops inheritance from project
@@ -4939,6 +5260,11 @@ function install(isGlobal, runtime = 'claude') {
 
   if (isWindsurf) {
     // Windsurf uses skills — no config.toml, no settings.json hooks needed
+    return { settingsPath: null, settings: null, statuslineCommand: null, runtime };
+  }
+
+  if (isForge) {
+    // Forge uses skills — no settings.json, no hooks needed
     return { settingsPath: null, settings: null, statuslineCommand: null, runtime };
   }
 
@@ -5151,8 +5477,9 @@ function finishInstall(settingsPath, settings, statuslineCommand, shouldInstallS
   const isCopilot = runtime === 'copilot';
   const isCursor = runtime === 'cursor';
   const isWindsurf = runtime === 'windsurf';
+  const isForge = runtime === 'forge';
 
-  if (shouldInstallStatusline && !isOpencode && !isCodex && !isCopilot && !isCursor && !isWindsurf) {
+  if (shouldInstallStatusline && !isOpencode && !isCodex && !isCopilot && !isCursor && !isWindsurf && !isForge) {
     settings.statusLine = {
       type: 'command',
       command: statuslineCommand
@@ -5161,7 +5488,7 @@ function finishInstall(settingsPath, settings, statuslineCommand, shouldInstallS
   }
 
   // Write settings when runtime supports settings.json
-  if (!isCodex && !isCopilot && !isCursor && !isWindsurf) {
+  if (!isCodex && !isCopilot && !isCursor && !isWindsurf && !isForge) {
     writeSettings(settingsPath, settings);
   }
 
@@ -5198,6 +5525,7 @@ function finishInstall(settingsPath, settings, statuslineCommand, shouldInstallS
   if (runtime === 'copilot') program = 'Copilot';
   if (runtime === 'antigravity') program = 'Antigravity';
   if (runtime === 'cursor') program = 'Cursor';
+  if (runtime === 'forge') program = 'Forge';
 
   let command = '/gsd:new-project';
   if (runtime === 'opencode') command = '/gsd-new-project';
@@ -5205,6 +5533,7 @@ function finishInstall(settingsPath, settings, statuslineCommand, shouldInstallS
   if (runtime === 'copilot') command = '/gsd-new-project';
   if (runtime === 'antigravity') command = '/gsd-new-project';
   if (runtime === 'cursor') command = 'gsd-new-project (mention the skill name)';
+  if (runtime === 'forge') command = 'gsd-new-project (mention the skill name)';
   console.log(`
   ${green}Done!${reset} Open a blank directory in ${program} and run ${cyan}${command}${reset}.
 
@@ -5356,9 +5685,10 @@ function promptRuntime(callback) {
     '6': 'antigravity',
     '7': 'cursor',
     '8': 'windsurf',
-    '9': 'augment'
+    '9': 'augment',
+    '10': 'forge'
   };
-  const allRuntimes = ['claude', 'opencode', 'gemini', 'codex', 'copilot', 'antigravity', 'cursor', 'windsurf', 'augment'];
+  const allRuntimes = ['claude', 'opencode', 'gemini', 'codex', 'copilot', 'antigravity', 'cursor', 'windsurf', 'augment', 'forge'];
 
   console.log(`  ${yellow}Which runtime(s) would you like to install for?${reset}\n\n  ${cyan}1${reset}) Claude Code  ${dim}(~/.claude)${reset}
   ${cyan}2${reset}) OpenCode     ${dim}(~/.config/opencode)${reset} - open source, free models
@@ -5369,7 +5699,8 @@ function promptRuntime(callback) {
   ${cyan}7${reset}) Cursor       ${dim}(~/.cursor)${reset}
   ${cyan}8${reset}) Windsurf     ${dim}(~/.windsurf)${reset}
   ${cyan}9${reset}) Augment      ${dim}(~/.augment)${reset}
-  ${cyan}10${reset}) All
+  ${cyan}10${reset}) Forge       ${dim}(~/forge)${reset}
+  ${cyan}11${reset}) All
 
   ${dim}Select multiple: 1,4,6 or 1 4 6${reset}
 `);
@@ -5380,7 +5711,7 @@ function promptRuntime(callback) {
     const input = answer.trim() || '1';
 
     // "All" shortcut
-    if (input === '10') {
+    if (input === '11') {
       callback(allRuntimes);
       return;
     }
@@ -5542,6 +5873,12 @@ if (process.env.GSD_TEST_MODE) {
     convertClaudeCommandToAugmentSkill,
     convertClaudeAgentToAugmentAgent,
     copyCommandsAsAugmentSkills,
+    convertClaudeToForgeContent,
+    convertClaudeCommandToForgeSkill,
+    convertClaudeAgentToForgeAgent,
+    copyCommandsAsForgeSkills,
+    claudeToForgeTools,
+    convertForgeToolName,
     writeManifest,
     reportLocalPatches,
     validateHookFields,
